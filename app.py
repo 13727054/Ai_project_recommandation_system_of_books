@@ -198,24 +198,10 @@ def ui_recommend():
         mode = "content"
         q = {"user": "N/A", "seed": seed_title}
     elif method == "collaborative":
-        """if uid_cast is None:
-            rows = content_neighbors(seed_title, topn=topn)
-            mode = "collaborative(fallback:content)"
-        else:"""
         rows = collaborative_recommend(uid_cast, topn=topn)
         mode = "collaborative(auto)" if auto_chosen else "collaborative"
         q = {"user": user_id_raw or "auto", "seed": seed_title}
     else:  # hybrid
-        """if uid_cast is None:
-            rows = hybrid_mmr(
-                user_id="",
-                book_title=seed_title,
-                topn=topn,
-                alpha=0.0,
-                lambda_div=lambda_div,
-                disliked=disliked_ids,
-            )
-        else:"""
         rows = hybrid_mmr(uid_cast, seed_title, topn=topn, alpha=alpha, lambda_div=lambda_div, disliked=disliked_ids,)
         mode = "hybrid(auto)" if auto_chosen else "hybrid"
         q = {"user": user_id_raw or "auto", "seed": seed_title}
