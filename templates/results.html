@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+  <a href="/">go back home</a>
+  <div class="card">
+    <p>Method：{{ mode }} | User：{{ q.user }} | Searching：{{ q.seed }}</p>
+  </div>
+  {% if rows and rows|length > 0 %}
+    {% for r in rows %}
+      <div class="card" style="display:flex; gap:12px; align-items:flex-start;">
+        <div style="width:24px; font-weight:bold; margin-right:4px;">
+            {{ loop.index }}
+        </div>
+        <form method="post" action="{{ url_for('dislike') }}">
+            <input type="hidden" name="book_id" value="{{ r.book_id }}">
+            <button type="submit" class="btn-dislike">dislike</button>
+        </form>
+        <img src="{{ r.image_url or '/static/placeholder.png' }}" alt="cover image" width="85" height="110">
+        <div>
+          <div><strong>{{ r.title }}</strong></div>
+          <div>Book ID: {{ r.book_id }}</div>
+          <div>Authors: {{ r.authors }}</div>
+          <div>Publication Year: {{ r.original_publication_year }}</div>
+          <div>Language: {{ r.language_code }}</div>
+          <div>Engine Score: {{ "%.4f"|format(r.score if r.score is not none else 0) }}</div>
+        </div>
+      </div>
+    {% endfor %}
+  {% else %}
+    <div class="card">No Result</div>
+  {% endif %}
+  <a href="/">go back home</a>
+{% endblock %}
+

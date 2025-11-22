@@ -1,0 +1,286 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="card" style="max-width:720px; margin:0 auto;">
+    <div class="section-title"><strong>Panel</strong></div><br>
+    <form action="/ui_recommend" method="post">
+      <!-- Choose a book as seed -->
+      <label class="hint">Searching for a Book</label>
+      <!-- 1. 這裡改成 input，並加上 list 屬性指向下方的 datalist ID -->
+      <input type="text" 
+            name="seed_title" 
+            list="book_list" 
+            placeholder="Type to search book title..." 
+            value="{{ last_seed_title }}"
+            autocomplete="off"
+            style="width: 100%; box-sizing: border-box; margin-top: 6px; margin-bottom: 6px;">
+
+      <!-- 2. 這是資料清單，id 必須對應 input 的 list 屬性 -->
+      <datalist id="book_list">
+        {% for t in seed_titles %}
+          <!-- datalist 的 option 不需要閉合標籤，value 即為顯示文字 -->
+          <option value="{{ t }}">
+        {% endfor %}
+      </datalist>
+
+
+      <!-- Method -->
+      <div style="margin-top:14px;" class="hint">Recommendation Method</div>
+      <div style="display:flex; gap:18px; margin:8px 0 12px;">
+        <label><input type="radio" id="hybrid" name="filter_type" value="hybrid" checked> Hybrid Filtering</label>
+        <label><input type="radio" id="collaborative" name="filter_type" value="collaborative"> Collaborative Filtering</label>
+        <label><input type="radio" id="content" name="filter_type" value="content"> Content-Based Filtering</label>
+      </div><br>
+
+      <!-- TopN -->
+      <div class="hint">Number of Recommendations</div>
+      <input type="range" id="num-recs" min="5" max="20" value="10" name="topn" oninput="nOut.textContent=this.value">
+      <div class="meta" id="num-recs-value"><span id="nOut">10</span></div><br>
+
+      <!-- Weights -->
+      <div id="collab-weight-group">
+        <div class="hint">Collaborative Weight</div>
+        <input type="range" id="collab-weight" min="0" max="1" step="0.05" value="0.6" name="alpha" oninput="aOut.textContent=this.value">
+        <div class="meta" id="collab-weight-value"><span id="aOut">0.6</span></div>
+        <br>
+      </div>
+
+      <div id="mmr-diversity-group">
+        <div class="hint">MMR Diversity (λ)</div>
+        <input type="range" id="mmr-diversity" min="0" max="1" step="0.05" value="0.7" name="lambda_div" oninput="lOut.textContent=this.value">
+        <div class="meta" id="mmr-diversity-value"><span id="lOut">0.7</span></div>
+        <br>
+      </div>
+
+      <!-- Optional: choose an existing user -->
+      <!--<div id="user-input-group">
+        {% if user_choices %}
+          <div class="hint" style="padding-bottom: 8px;">User</div>
+          <select name="user_id">
+            <option value="auto">Auto</option>
+            {% for uid in user_choices %}
+              <option value="{{ uid }}">{{ uid }}</option>
+            {% endfor %}
+          </select>
+        {% endif %}
+        <br><br>
+      </div>-->
+      <!-- User 模式：Auto / Custom -->
+      <div id="user-input-group" style="margin-top:16px;">
+        <label class="hint">User</label>
+
+        <!-- 只顯示 Auto / Custom -->
+        <select
+          name="user_mode"
+          id="user_mode"
+          style="margin-top:4px; padding:4px 8px; border-radius:4px; border:1px solid #d1d5db;">
+          <option value="auto" selected>Auto</option>
+          <option value="custom">Custom</option>
+        </select>
+
+        <!-- 真正送到後端的 user_id（隱藏） -->
+        <input type="hidden" name="user_id" id="user_id_hidden" value="auto">
+
+        <!-- Custom 時才顯示的 slider -->
+        <div
+          id="user-range-wrapper"
+          style="margin-top:8px; display:none;">
+          <input
+            type="range"
+            id="user_range"
+            min="{{ user_min }}"
+            max="{{ user_max }}"
+            value="{{ user_default }}"
+            step="1"
+            style="width:220px;">
+          <div style="margin-top:4px; font-size:14px;">
+            <span id="user_range_value">{{ user_default }}</span>
+          </div>
+        </div>
+      </div>
+
+      {% if disliked_books %}
+        <div class="field" id="disliked-input-group">
+          <br><br>
+          <label>Disliked Book</label>
+          <div class="card">
+            {% for b in disliked_books %}              
+              <div
+                style="display:inline-flex;
+                      align-items:center;
+                      gap:6px;
+                      padding:4px 10px;
+                      margin:4px 4px 0 0;
+                      border-radius:9999px;
+                      background:#f3f4f6;
+                      border:1px solid #e5e7eb;
+                      font-size:14px;
+                      color:#111827;">
+                <!-- 左邊 icon，可以改成你自己的 SVG / 圖示 -->
+                <span style="font-size:16px;line-height:1;">🔵</span>
+
+                <!-- 書名 -->
+                <span
+                  style="font-size:14px;
+                        font-weight:500;
+                        white-space:nowrap;
+                        max-width:fit-content;
+                        overflow:hidden;
+                        text-overflow:ellipsis;">
+                  {{ b.title }}
+                </span>
+
+                <!-- 右邊刪除按鈕，用 formaction 指向 /remove_disliked -->
+                <button
+                  type="submit"
+                  name="book_id"
+                  value="{{ b.book_id }}"
+                  formaction="{{ url_for('remove_disliked') }}"
+                  formmethod="post"
+                  style="border:none;
+                        background:transparent;
+                        color:#9ca3af;
+                        font-size:16px;
+                        padding:0 0 0 4px;
+                        cursor:pointer;
+                        line-height:1;">
+                  &times;
+                </button>
+              </div>
+            {% endfor %}
+            <button
+              type="submit"
+              formaction="{{ url_for('clear_disliked') }}"
+              formmethod="post"
+              style="display:inline-flex;
+                    align-items:center;
+                    gap:6px;
+                    padding:4px 12px;
+                    margin:4px 4px 0 0;
+                    border-radius:9999px;
+                    background:#eff6ff;
+                    border:1px solid #bfdbfe;
+                    font-size:13px;
+                    color:#1d4ed8;
+                    cursor:pointer;">
+              <span style="width:10px;height:10px;border-radius:9999px;
+                          border:2px solid #1d4ed8;box-sizing:border-box;"></span>
+              <span style="font-weight:500;">Clear all</span>
+            </button>
+          </div>
+        </div>
+      {% endif %}
+      <br>
+      <button type="submit" style="margin-top:14px;">Get Recommendations</button>
+    </form>
+  </div>
+
+  <script>
+    // 更新滑桿值顯示（基於原始設計）
+    const sliders = ['num-recs', 'collab-weight', 'mmr-diversity'];
+    sliders.forEach(sliderId => {
+        const slider = document.getElementById(sliderId);
+        const valueSpan = document.getElementById(sliderId + '-value');
+        if (slider && valueSpan) {
+            slider.addEventListener('input', () => {
+                valueSpan.textContent = slider.value;
+            });
+        }
+    });
+
+    // 新增隱藏/顯示邏輯，基於 filter_type radio
+    const radios = document.querySelectorAll('input[name="filter_type"]');
+    const collabWeightGroup = document.getElementById('collab-weight-group');
+    const mmrDiversityGroup = document.getElementById('mmr-diversity-group');
+    const userInputGroup = document.getElementById('user-input-group');
+    const dislikedInputGroup = document.getElementById('disliked-input-group');
+
+    function updateVisibility() {
+      const selectedValue = document.querySelector('input[name="filter_type"]:checked').value;
+      
+      if (selectedValue === "hybrid") {
+        // 默認顯示所有（Hybrid）
+        collabWeightGroup.style.display = 'block';
+        mmrDiversityGroup.style.display = 'block';
+        userInputGroup.style.display = 'block';
+        if (dislikedInputGroup) {
+          dislikedInputGroup.style.display = 'block';
+        }
+      } else if (selectedValue === 'collaborative') {
+        // 隱藏 Collaborative Weight 和 MMR Diversity (λ)
+        collabWeightGroup.style.display = 'none';
+        mmrDiversityGroup.style.display = 'none';
+        if (dislikedInputGroup) {
+          dislikedInputGroup.style.display = 'none';
+        }
+        // User 保持顯示
+        userInputGroup.style.display = 'block';
+      } else if (selectedValue === 'content') {
+        // 隱藏 Collaborative Weight、MMR Diversity (λ) 和 User (optional)
+        collabWeightGroup.style.display = 'none';
+        mmrDiversityGroup.style.display = 'none';
+        userInputGroup.style.display = 'none';
+        if (dislikedInputGroup) {
+          dislikedInputGroup.style.display = 'none';
+        }
+      }
+      // Hybrid: 無變更，顯示所有
+    }
+
+    // 監聽 radio 變更
+    radios.forEach(radio => {
+        radio.addEventListener('change', updateVisibility);
+    });
+
+    // 頁面載入時初始化
+    updateVisibility();
+
+    // --- User Auto / Custom + Slider ---
+
+    const userModeSelect = document.getElementById("user_mode");
+    const userRangeWrapper = document.getElementById("user-range-wrapper");
+    const userRange = document.getElementById("user_range");
+    const userRangeValue = document.getElementById("user_range_value");
+    const userIdHidden = document.getElementById("user_id_hidden");
+
+    function updateUserControls() {
+      if (!userModeSelect) return;
+
+      if (userModeSelect.value === "custom") {
+        // 顯示 slider，並把隱藏的 user_id 設成 slider 的值
+        if (userRangeWrapper) {
+          userRangeWrapper.style.display = "block";
+        }
+        if (userRange && userIdHidden && userRangeValue) {
+          userIdHidden.value = userRange.value;
+          userRangeValue.textContent = userRange.value;
+        }
+      } else {
+        // Auto：隱藏 slider，user_id 傳 "auto"
+        if (userRangeWrapper) {
+          userRangeWrapper.style.display = "none";
+        }
+        if (userIdHidden) {
+          userIdHidden.value = "auto";
+        }
+      }
+    }
+
+    if (userModeSelect) {
+      userModeSelect.addEventListener("change", updateUserControls);
+    }
+    if (userRange) {
+      userRange.addEventListener("input", function () {
+        if (userRangeValue) {
+          userRangeValue.textContent = userRange.value;
+        }
+        if (userIdHidden && userModeSelect.value === "custom") {
+          userIdHidden.value = userRange.value;
+        }
+      });
+    }
+
+    // 載入頁面先初始化一次（預設 Auto）
+    updateUserControls();
+
+  </script>
+{% endblock %}
